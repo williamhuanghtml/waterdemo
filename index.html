@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>大自然的水循環 - 互動配對學習挑戰</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <!-- Canvas Confetti for Celebration -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    * {
+      font-family: 'Noto Sans TC', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    /* 震動錯誤動畫 */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    .shake-anim {
+      animation: shake 0.45s ease-in-out;
+    }
+
+    /* 正確脈衝光暈 */
+    @keyframes correctPulse {
+      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+      70% { box-shadow: 0 0 0 12px rgba(34, 197, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+    .correct-anim {
+      animation: correctPulse 1s ease-out;
+    }
+
+    /* 拖曳中的視覺效果 */
+    .dragging {
+      opacity: 0.55;
+      transform: scale(0.95);
+    }
+
+    /* 目標區 hover 效果 */
+    .drop-hover {
+      background-color: rgba(254, 240, 138, 0.9) !important;
+      border-color: #ca8a04 !important;
+      transform: scale(1.08) !important;
+      box-shadow: 0 10px 25px -5px rgba(202, 138, 4, 0.45);
+      z-index: 40 !important;
+    }
+
+    /* 選取狀態（供觸控點選使用） */
+    .token-selected {
+      outline: 3px solid #2563eb;
+      outline-offset: 2px;
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 10px 20px -3px rgba(37, 99, 235, 0.4);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col selection:bg-amber-200">
+  <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-emerald-400 flex items-center justify-center text-white shadow-md">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+            <span>水循環互動學習</span>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">互動式拖拉挑戰</span>
+          </h1>
+          <p class="text-xs text-slate-500">將下方橘黃色名詞標籤拖曳至圖中虛線框；檢查後可針對紅框反覆修改，找出正確答案！</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <label class="cursor-pointer text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-300 px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
+          <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          <span>更換底圖圖片</span>
+          <input type="file" id="bgUploader" accept="image/*" class="hidden">
+        </label>
+        <button id="resetBtn" class="text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 px-3.5 py-2 rounded-lg transition shadow-sm flex items-center gap-1">
+          <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          重新開始
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto w-full px-4 py-4 flex-1 flex flex-col gap-4">
+    <!-- 提示條 -->
+    <div id="hintBanner" class="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r-xl shadow-xs flex items-center justify-between text-xs sm:text-sm text-amber-900">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">💡</span>
+        <span><strong>自主探索與修改：</strong>點擊「檢查答案與評分」後，<strong>綠色</strong>表示答對、<strong>紅色</strong>表示需修改。您可以直接點選紅色框內的標籤更換位置，直到全部挑戰成功！</span>
+      </div>
+      <button onclick="document.getElementById('hintBanner').remove()" class="text-amber-600 hover:text-amber-800 text-base font-bold px-1">&times;</button>
+    </div>
+
+    <!-- 水循環主要地圖展示區 -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200/80 p-2 sm:p-4 overflow-hidden relative">
+      <div class="relative w-full aspect-[21/10] min-h-[460px] bg-slate-900 rounded-xl overflow-hidden shadow-inner flex items-center justify-center" id="mapStage">
+        
+        <!-- 背景圖容器（可由上傳圖片替換） -->
+        <img id="customBgImage" class="absolute inset-0 w-full h-full object-cover z-0 hidden" alt="水循環背景圖">
+        
+        <!-- 內建高解析水循環向量示意底圖 -->
+        <svg id="defaultSvgBg" class="absolute inset-0 w-full h-full z-0 pointer-events-none" viewBox="0 0 1400 660" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#bae6fd"/>
+              <stop offset="60%" stop-color="#e0f2fe"/>
+              <stop offset="100%" stop-color="#f8fafc"/>
+            </linearGradient>
+            <linearGradient id="seaGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#0284c7"/>
+              <stop offset="50%" stop-color="#38bdf8"/>
+              <stop offset="100%" stop-color="#7dd3fc"/>
+            </linearGradient>
+            <linearGradient id="seaSideGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#0369a1"/>
+              <stop offset="100%" stop-color="#0c4a6e"/>
+            </linearGradient>
+            <linearGradient id="sandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#fde047"/>
+              <stop offset="60%" stop-color="#facc15"/>
+              <stop offset="100%" stop-color="#ca8a04"/>
+            </linearGradient>
+            <linearGradient id="snowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="70%" stop-color="#e2e8f0"/>
+              <stop offset="100%" stop-color="#94a3b8"/>
+            </linearGradient>
+            <linearGradient id="mountainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#16a34a"/>
+              <stop offset="45%" stop-color="#15803d"/>
+              <stop offset="100%" stop-color="#166534"/>
+            </linearGradient>
+            <linearGradient id="groundGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#d97706"/>
+              <stop offset="50%" stop-color="#b45309"/>
+              <stop offset="100%" stop-color="#78350f"/>
+            </linearGradient>
+            <linearGradient id="aquiferGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#93c5fd"/>
+              <stop offset="100%" stop-color="#60a5fa"/>
+            </linearGradient>
+            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#facc15" stroke="#ca8a04" stroke-width="1"/>
+            </marker>
+            <filter id="cloudShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.15"/>
+            </filter>
+            <!-- 樹木模型複用定義 -->
+            <g id="treePine">
+              <!-- 樹幹 -->
+              <rect x="-3" y="10" width="6" height="12" fill="#78350f" rx="1"/>
+              <!-- 樹冠層 -->
+              <polygon points="0,-24 -14,-4 14,-4" fill="#15803d"/>
+              <polygon points="0,-16 -17,4 17,4" fill="#166534"/>
+              <polygon points="0,-6 -20,12 20,12" fill="#14532d"/>
+            </g>
+            <g id="treeRound">
+              <!-- 樹幹 -->
+              <rect x="-3.5" y="6" width="7" height="14" fill="#854d0e" rx="1.5"/>
+              <!-- 樹葉球形層 -->
+              <circle cx="-6" cy="0" r="13" fill="#15803d"/>
+              <circle cx="6" cy="-2" r="14" fill="#16a34a"/>
+              <circle cx="0" cy="-8" r="15" fill="#22c55e"/>
+              <circle cx="1" cy="4" r="12" fill="#166534"/>
+            </g>
+          </defs>
+
+          <!-- 天空 -->
+          <rect width="1400" height="660" fill="url(#skyGrad)"/>
+
+          <!-- 遠山 (雪山山頂) -->
+          <polygon points="980,180 1140,40 1280,220" fill="url(#snowGrad)"/>
+          <polygon points="1130,50 1340,60 1400,240 1080,240" fill="#f1f5f9"/>
+          <polygon points="1200,60 1380,90 1400,210" fill="#ffffff"/>
+
+          <!-- 陸地山嶺立體層：陸地地表起始於高處，往左側海岸維持明顯高於海平面的地貌 -->
+          <path d="M0,450 Q200,430 400,450 Q620,320 840,260 T1260,180 L1400,240 L1400,660 L0,660 Z" fill="url(#mountainGrad)"/>
+          <path d="M0,460 Q220,440 500,460 Q760,280 960,320 T1400,320 L1400,660 L0,660 Z" fill="#22c55e" opacity="0.65"/>
+
+          <!-- 海岸陸地台地與沙灘坡面（陸地高於海面，向海邊傾斜形成海灘與岸崖） -->
+          <path d="M0,465 Q160,468 280,490 L340,518 L0,518 Z" fill="url(#sandGrad)"/>
+          <!-- 海岸崖線與陰影（強化陸地比海面高的視覺立體階梯感） -->
+          <path d="M0,518 L340,518 L340,545 L0,545 Z" fill="#92400e" opacity="0.7"/>
+
+          <!-- 海洋：海平面明確位在海岸台地之下 (海平面 y=530，大幅低於陸地 460~490) -->
+          <path d="M0,530 Q170,532 340,538 L340,660 L0,660 Z" fill="url(#seaGrad)"/>
+          <!-- 海面波光與浪花線（顯示水面平靜低陷於海岸下方） -->
+          <path d="M10,542 Q150,546 320,548" stroke="#ffffff" stroke-width="3" fill="none" opacity="0.8" stroke-dasharray="16 8"/>
+          <path d="M25,562 Q160,566 290,568" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.6" stroke-dasharray="12 10"/>
+          <path d="M40,595 Q140,598 250,600" stroke="#bae6fd" stroke-width="2" fill="none" opacity="0.5" stroke-dasharray="20 12"/>
+
+          <!-- 河流網絡與匯集：從雪山順流而下，經過湖泊並最終注入地勢較低的海洋 -->
+          <path d="M1200,200 Q1060,340 920,410 T720,480 T460,500 T310,528 T150,536" fill="none" stroke="#38bdf8" stroke-width="24" stroke-linecap="round"/>
+          <path d="M1200,200 Q1060,340 920,410 T720,480 T460,500 T310,528 T150,536" fill="none" stroke="#bae6fd" stroke-width="10" stroke-linecap="round"/>
+
+          <!-- 湖泊 -->
+          <ellipse cx="460" cy="460" rx="75" ry="24" fill="#38bdf8" opacity="0.9" stroke="#7dd3fc" stroke-width="3"/>
+
+          <!-- 地質剖面 -->
+          <polygon points="340,518 1400,350 1400,660 340,660" fill="url(#groundGrad)"/>
+          <!-- 含水層與地下水帶：一路延伸貫穿至左側海床底層 (x: 0~1400) -->
+          <path d="M0,590 L340,560 L1400,460 L1400,530 L340,620 L0,630 Z" fill="url(#aquiferGrad)" opacity="0.85"/>
+          <text x="960" y="505" fill="#1e3a8a" font-size="16" font-weight="bold">含水層 (飽和地下水層)</text>
+          <text x="1150" y="580" fill="#fef3c7" font-size="15" font-weight="bold">不透水岩層</text>
+          <text x="650" y="570" fill="#ffffff" font-size="14" font-weight="bold">地下水流向 ➔➔ 海洋</text>
+          <!-- 地下水注入海洋指示流線與箭頭 -->
+          <path d="M300,590 L160,605 L60,610" fill="none" stroke="#60a5fa" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
+
+          <!-- 森林植被群：向下移動至陸地地表 -->
+          <g id="forestCluster" filter="url(#cloudShadow)">
+            <!-- 樹林下移至 y:490~510 區間 -->
+            <use href="#treePine" x="240" y="495" transform="scale(0.85)"/>
+            <use href="#treeRound" x="265" y="490" transform="scale(0.85)"/>
+            <use href="#treePine" x="290" y="488" transform="scale(0.9)"/>
+            <use href="#treeRound" x="315" y="486" transform="scale(0.9)"/>
+            <use href="#treePine" x="340" y="485" transform="scale(0.85)"/>
+            <use href="#treeRound" x="365" y="483" transform="scale(0.8)"/>
+          </g>
+
+          <!-- 雲層 1：海洋上空小型積雲 -->
+          <g filter="url(#cloudShadow)">
+            <ellipse cx="200" cy="180" rx="90" ry="32" fill="#ffffff"/>
+            <circle cx="160" cy="165" r="38" fill="#ffffff"/>
+            <circle cx="210" cy="150" r="46" fill="#ffffff"/>
+            <circle cx="255" cy="168" r="32" fill="#ffffff"/>
+          </g>
+
+          <!-- 雲層 2：陸地上空大積雨雲與降雨 -->
+          <g filter="url(#cloudShadow)">
+            <ellipse cx="680" cy="180" rx="140" ry="46" fill="#f8fafc"/>
+            <circle cx="610" cy="150" r="62" fill="#ffffff"/>
+            <circle cx="690" cy="130" r="74" fill="#ffffff"/>
+            <circle cx="760" cy="155" r="54" fill="#f1f5f9"/>
+          </g>
+          <!-- 雨絲 -->
+          <path d="M600,230 L585,340 M630,235 L615,350 M660,235 L645,350 M690,235 L675,355 M720,235 L705,345 M750,230 L735,340" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="10 8" stroke-linecap="round"/>
+
+          <!-- 雲層 3：高山降雪雲 -->
+          <g filter="url(#cloudShadow)">
+            <ellipse cx="1120" cy="110" rx="100" ry="30" fill="#94a3b8"/>
+            <circle cx="1070" cy="95" r="38" fill="#cbd5e1"/>
+            <circle cx="1140" cy="85" r="46" fill="#e2e8f0"/>
+          </g>
+          <!-- 降雪線 -->
+          <path d="M1070,145 L1070,220 M1110,145 L1110,225 M1150,145 L1150,215" stroke="#f8fafc" stroke-width="3" stroke-dasharray="6 6"/>
+
+          <!-- 黃色循環箭頭 (Yellow Circulation Arrows) -->
+          <!-- 1. 海洋蒸發箭頭：起點延伸至真實海面水體 (y=555) -->
+          <path d="M120,555 Q95,380 170,230" fill="none" stroke="#facc15" stroke-width="8" stroke-linecap="round" marker-end="url(#arrow)"/>
+          <!-- 2. 植物蒸散箭頭 -->
+          <path d="M370,440 Q390,340 480,270" fill="none" stroke="#facc15" stroke-width="8" stroke-linecap="round" marker-end="url(#arrow)"/>
+          <!-- 3. 湖泊蒸發箭頭 -->
+          <path d="M490,430 Q530,330 580,260" fill="none" stroke="#facc15" stroke-width="8" stroke-linecap="round" marker-end="url(#arrow)"/>
+          <!-- 4. 水氣高空輸送橫向箭頭 -->
+          <path d="M850,130 Q940,115 1010,105" fill="none" stroke="#facc15" stroke-width="8" stroke-linecap="round" marker-end="url(#arrow)"/>
+          <!-- 5. 融雪流向地表徑流箭頭 -->
+          <path d="M1150,230 Q1060,340 910,430" fill="none" stroke="#facc15" stroke-width="7" stroke-linecap="round" marker-end="url(#arrow)"/>
+          <!-- 6. 雨水降落山嶺箭頭 -->
+          <path d="M790,260 L790,320" fill="none" stroke="#facc15" stroke-width="7" stroke-linecap="round" marker-end="url(#arrow)"/>
+          <!-- 7. 滲透入地層虛線箭頭 -->
+          <path d="M1060,380 L1060,460 M1130,360 L1130,440" fill="none" stroke="#facc15" stroke-width="5" stroke-dasharray="8 6" stroke-linecap="round" marker-end="url(#arrow)"/>
+        </svg>
+
+        <!-- 放置區域（Drop Zones） -->
+        <div id="dropZonesContainer" class="absolute inset-0 w-full h-full pointer-events-auto">
+          <!-- 1. 海面蒸發 -->
+          <div class="drop-zone absolute flex items-center justify-center border-2 border-dashed border-sky-400 bg-white/85 backdrop-blur-xs rounded-xl shadow-md transition-all duration-200 cursor-pointer"
+               style="top: 52%; left: 3%; width: 12%; height: 9.5%;"
+               data-target-id="蒸發-海洋" data-accepted="蒸發" title="點擊收回或放置標籤">
+            <span class="placeholder-text text-xs sm:text-sm font-semibold text-slate-400">海面水氣？</span>
+          </div>
+
+          <!-- 2. 植物蒸散：移至樹木上方 (top 改為 39%) -->
+          <div class="drop-zone absolute flex items-center justify-center border-2 border-dashed border-emerald-400 bg-white/85 backdrop-blur-xs rounded-xl shadow-md transition-all duration-200 cursor-pointer"
+               style="top: 39%; left: 20%; width: 12%; height: 9.5%;"
+               data-target-id="蒸散-植物" data-accepted="蒸散" title="點擊收回或放置標籤">
+            <span class="placeholder-text text-xs sm:text-sm font-semibold text-slate-400">植物水分？</span>
+          </div>
+
+          <!-- 3. 湖泊蒸發 -->
+          <div class="drop-zone absolute flex items-center justify-center border-2 border-dashed border-sky-400 bg-white/85 backdrop-blur-xs rounded-xl shadow-md transition-all duration-200 cursor-pointer"
+               style="top: 48%; left: 35%; width: 12%; height: 9.5%;"
+               data-target-id="蒸發-湖泊" data-accepted="蒸發" title="點擊收回或放置標籤">
+            <span class="placeholder-text text-xs sm:text-sm font-semibold text-slate-400">湖水上升？</span>
+          </div>
+
+          <!-- 4. 凝結 (雲朵生成) -->
+          <div class="drop-zone absolute flex items-center justify-center border-2 border-dashed border-indigo-400 bg-white/85 backdrop-blur-xs rounded-xl shadow-md transition-all duration-200 cursor-pointer"
+               style="top: 15%; left: 40%; width: 13%; height: 9.5%;"
+               data-target-id="凝結" data-accepted="凝結" title="點擊收回或放置標籤">
+            <span class="placeholder-text text-xs sm:text-sm font-semibold text-slate-400">水氣成雲？</span>
+          </div>
+
+          <!-- 5. 降雨 (移至向下黃色箭頭旁) -->
+          <div class="drop-zone absolute flex items-center justify-center border-2 border-dashed border-blue-400 bg-white/85 backdrop-blur-xs rounded-xl shadow-md transition-all duration-200 cursor-pointer"
+               style="top: 38%; left: 56%; width: 12%; height: 9.5%;"
+               data-target-id="降雨" data-accepted="降雨" title="點擊收回或放置標籤">
+            <span class="placeholder-text text-xs sm:text-sm font-semibold text-slate-400">雨水落下？</span>
+          </div>
+
+          <!-- 6. 降雪 -->
+          <div class="drop-zone absolute flex items-center justify-center border-2 border-dashed border-cyan-400 bg-white/85 backdrop-blur-xs rounded-xl shadow-md transition-all duration-200 cursor-pointer"
+               style="top: 20%; left: 70%; width: 12%; height: 9.5%;"
+               data-target-id="降雪" data-accepted="降雪" title="點擊收回或放置標籤">
+            <span class="placeholder-text text-xs sm:text-sm font-semibold text-slate-400">冰晶降落？</span>
+          </div>
+
+          <!-- 7. 融化 -->
+          <div class="drop-zone absolute flex items-center justify-center border-2 border-dashed border-teal-400 bg-white/85 backdrop-blur-xs rounded-xl shadow-md transition-all duration-200 cursor-pointer"
+               style="top: 38%; left: 77%; width: 12%; height: 9.5%;"
+               data-target-id="融化" data-accepted="融化" title="點擊收回或放置標籤">
+            <span class="placeholder-text text-xs sm:text-sm font-semibold text-slate-400">雪變成水？</span>
+          </div>
+
+          <!-- 8. 匯集 -->
+          <div class="drop-zone absolute flex items-center justify-center border-2 border-dashed border-emerald-500 bg-white/85 backdrop-blur-xs rounded-xl shadow-md transition-all duration-200 cursor-pointer"
+               style="top: 61%; left: 54%; width: 12%; height: 9.5%;"
+               data-target-id="匯集" data-accepted="匯集" title="點擊收回或放置標籤">
+            <span class="placeholder-text text-xs sm:text-sm font-semibold text-slate-400">河水奔流？</span>
+          </div>
+
+          <!-- 9. 滲入 -->
+          <div class="drop-zone absolute flex items-center justify-center border-2 border-dashed border-amber-600 bg-white/85 backdrop-blur-xs rounded-xl shadow-md transition-all duration-200 cursor-pointer"
+               style="top: 63%; left: 79%; width: 12%; height: 9.5%;"
+               data-target-id="滲入" data-accepted="滲入" title="點擊收回或放置標籤">
+            <span class="placeholder-text text-xs sm:text-sm font-semibold text-slate-400">地底吸收？</span>
+          </div>
+
+          <!-- 10. 地下水 -->
+          <div class="drop-zone absolute flex items-center justify-center border-2 border-dashed border-blue-600 bg-white/85 backdrop-blur-xs rounded-xl shadow-md transition-all duration-200 cursor-pointer"
+               style="top: 80%; left: 63%; width: 12%; height: 9.5%;"
+               data-target-id="地下水" data-accepted="地下水" title="點擊收回或放置標籤">
+            <span class="placeholder-text text-xs sm:text-sm font-semibold text-slate-400">地層中水流？</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 下方名詞標籤候選庫 (橘黃色名詞標籤) -->
+    <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-200">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-amber-500 animate-pulse"></span>
+          <h2 class="font-bold text-slate-800 text-sm sm:text-base">名詞標籤庫（請拖曳或點選標籤放入圖中）</h2>
+        </div>
+        <div class="text-xs text-slate-500 font-medium flex items-center gap-3">
+          <span id="placedCountBadge">已放置：0 / 10</span>
+          <button id="returnAllBtn" class="text-slate-500 hover:text-slate-800 underline">全部收回標籤</button>
+        </div>
+      </div>
+
+      <!-- 標籤容器 -->
+      <div id="tokenBank" class="flex flex-wrap items-center gap-3 min-h-[58px] p-2 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
+        <!-- 動態生成的標籤將放在此處 -->
+      </div>
+
+      <!-- 檢查按鈕與進度列 -->
+      <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="text-xs text-slate-500 flex items-center gap-2">
+          <span>作答進度：</span>
+          <div class="w-36 h-2.5 bg-slate-200 rounded-full overflow-hidden">
+            <div id="progressBar" class="h-full bg-amber-500 transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <button id="checkAnswersBtn" class="w-full sm:w-auto px-7 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-95 text-white font-black text-sm rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>檢查答案與評分</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 評分回饋、鼓勵話語與隨機小知識面板 -->
+    <div id="resultPanel" class="hidden bg-white rounded-2xl p-5 shadow-lg border border-slate-200 transition-all">
+      <div class="flex flex-col lg:flex-row items-center gap-6">
+        <!-- 左側圓形百分比計分器 -->
+        <div class="flex flex-col items-center justify-center p-3">
+          <div class="relative w-32 h-32 flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="42" stroke="#e2e8f0" stroke-width="10" fill="transparent" />
+              <circle id="scoreCircle" cx="50" cy="50" r="42" stroke="#f59e0b" stroke-width="10" 
+                      stroke-linecap="round" fill="transparent" 
+                      stroke-dasharray="264" stroke-dashoffset="264" 
+                      class="transition-all duration-1000 ease-out" />
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span id="scorePercentage" class="text-3xl font-black text-slate-800">0%</span>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">準確率</span>
+            </div>
+          </div>
+          <span id="scoreFraction" class="mt-2 text-xs font-bold text-slate-600">答對 0 / 10 題</span>
+        </div>
+
+        <!-- 中間文字回饋與鼓勵 -->
+        <div class="flex-1 text-center lg:text-left">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-2" id="feedbackBadge">
+            評分完成
+          </div>
+          <h3 id="feedbackTitle" class="text-xl font-black text-slate-800 mb-1.5">太棒了！準備好揭曉成績了嗎？</h3>
+          <p id="feedbackMessage" class="text-sm text-slate-600 leading-relaxed mb-3">
+            水循環串聯了海洋、天空與陸地。請檢查紅色錯誤部分，點選紅色框內的標籤調整更換，再測驗一次！
+          </p>
+          
+          <!-- 科學小知識卡片 -->
+          <div class="bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-100 rounded-xl p-3.5 mt-2">
+            <div class="flex items-center gap-2 text-sky-800 font-bold text-xs mb-1">
+              <span class="text-base">🌊</span>
+              <span>水循環科學小知識 (每次重新開始或作答都會隨機帶來新知識)</span>
+            </div>
+            <p id="funFactContent" class="text-xs sm:text-sm text-sky-950/80 leading-relaxed">
+              地球上的水總量在億萬年來幾乎是不變的，你今天喝的水，可能數億年前也曾被恐龍喝過呢！
+            </p>
+          </div>
+        </div>
+
+        <!-- 右側按鈕操作：引導自主訂正 -->
+        <div class="flex flex-col gap-2.5 w-full lg:w-48">
+          <button id="scrollToReviseBtn" class="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+            </svg>
+            <span>點我直接修改紅框</span>
+          </button>
+          <button id="tryAgainBtn" class="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow">
+            清空重新挑戰
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // 10 個核心水循環標籤資料（包含重複的蒸發，貼合圖中海洋與湖泊）
+    const initialVocabulary = [
+      { id: "t1", term: "蒸發", category: "蒸發" },
+      { id: "t2", term: "蒸發", category: "蒸發" },
+      { id: "t3", term: "蒸散", category: "蒸散" },
+      { id: "t4", term: "凝結", category: "凝結" },
+      { id: "t5", term: "降雨", category: "降雨" },
+      { id: "t6", term: "降雪", category: "降雪" },
+      { id: "t7", term: "融化", category: "融化" },
+      { id: "t8", term: "匯集", category: "匯集" },
+      { id: "t9", term: "滲入", category: "滲入" },
+      { id: "t10", term: "地下水", category: "地下水" }
+    ];
+
+    // 水循環科學小知識庫（隨機抽換）
+    const scienceFacts = [
+      "地球上的水總量在億萬年來幾乎是不變的，你今天喝的一杯水，數億年前可能也曾被恐龍喝過！",
+      "植物吸收的水分中，有高達 97%~99% 會透過葉片上的氣孔「蒸散」回大氣中，只有極少數留在植物體內！",
+      "一朵看起來蓬鬆輕飄的中型積雨雲，其內部累積的小水滴與冰晶總重量可以高達 500 公噸，相當於 100 頭大象！",
+      "地球上超過 96.5% 的水都在海洋中，而人類能直接使用的淡水，大部分都封存在冰川以及埋藏在「地下水」中。",
+      "「凝結」是氣態水蒸氣冷卻變回液態水小水滴的過程；而如果水蒸氣直接跳過液體凝固成冰霜，科學上稱為「凝華」。",
+      "地下水並不是地底下一條大地下河，而是像海綿吸水一樣，儲存在沙礫、岩石裂縫微小孔隙中的「含水層」慢慢流動。",
+      "雨滴從雲層落下到達地面，平均時速大約是 15 到 30 公里，重力與空氣阻力會維持雨滴的終端速度。",
+      "高山上的積雪融化是許多大河流（如長江、黃河、恆河）春夏季最關鍵的淡水來源。"
+    ];
+
+    // 狀態變數
+    let tokens = [];
+    let selectedTokenElement = null; // 支援觸控點選
+    let draggedTokenId = null;
+
+    // DOM 節點
+    const tokenBankEl = document.getElementById("tokenBank");
+    const dropZones = document.querySelectorAll(".drop-zone");
+    const checkAnswersBtn = document.getElementById("checkAnswersBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const returnAllBtn = document.getElementById("returnAllBtn");
+    const placedCountBadge = document.getElementById("placedCountBadge");
+    const progressBar = document.getElementById("progressBar");
+    const resultPanel = document.getElementById("resultPanel");
+    const scorePercentageEl = document.getElementById("scorePercentage");
+    const scoreFractionEl = document.getElementById("scoreFraction");
+    const scoreCircle = document.getElementById("scoreCircle");
+    const feedbackTitle = document.getElementById("feedbackTitle");
+    const feedbackMessage = document.getElementById("feedbackMessage");
+    const feedbackBadge = document.getElementById("feedbackBadge");
+    const funFactContent = document.getElementById("funFactContent");
+    const tryAgainBtn = document.getElementById("tryAgainBtn");
+    const scrollToReviseBtn = document.getElementById("scrollToReviseBtn");
+    const bgUploader = document.getElementById("bgUploader");
+    const customBgImage = document.getElementById("customBgImage");
+
+    // 洗牌演算法
+    function shuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // 隨機選取小知識
+    function pickRandomFunFact() {
+      const idx = Math.floor(Math.random() * scienceFacts.length);
+      funFactContent.textContent = scienceFacts[idx];
+    }
+
+    // 更新進度條與統計
+    function updateProgress() {
+      let placedCount = 0;
+      dropZones.forEach(zone => {
+        if (zone.querySelector(".token-chip")) {
+          placedCount++;
+        }
+      });
+      placedCountBadge.textContent = `已放置：${placedCount} / ${dropZones.length}`;
+      const percent = (placedCount / dropZones.length) * 100;
+      progressBar.style.width = `${percent}%`;
+    }
+
+    function createTokenChip(tokenData) {
+      const chip = document.createElement("div");
+      chip.id = `chip-${tokenData.id}`;
+      chip.draggable = true;
+      chip.dataset.id = tokenData.id;
+      chip.dataset.term = tokenData.term;
+      
+      // 橘黃色標籤外觀
+      chip.className = "token-chip px-3.5 py-1.5 bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-amber-950 font-black text-xs sm:text-sm rounded-lg shadow border border-amber-500/60 cursor-grab active:cursor-grabbing transition-all flex items-center gap-1.5 select-none";
+
+      chip.innerHTML = `
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-700/60"></span>
+        <span>${tokenData.term}</span>
+      `;
+
+      // 桌面 HTML5 Drag & Drop
+      chip.addEventListener("dragstart", (e) => {
+        draggedTokenId = tokenData.id;
+        chip.classList.add("dragging");
+        e.dataTransfer.setData("text/plain", tokenData.id);
+        e.dataTransfer.effectAllowed = "move";
+      });
+
+      chip.addEventListener("dragend", () => {
+        chip.classList.remove("dragging");
+        draggedTokenId = null;
+      });
+
+      // 點擊事件：若在格子內，點擊退回下方庫以便學生重新修改！
+      chip.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const parentZone = chip.closest(".drop-zone");
+        if (parentZone) {
+          // 在格子內，點擊退回下方標籤庫
+          returnTokenToBank(chip);
+        } else {
+          // 在標籤庫中，切換選取狀態（便於平板/觸控操作）
+          if (selectedTokenElement === chip) {
+            chip.classList.remove("token-selected");
+            selectedTokenElement = null;
+          } else {
+            if (selectedTokenElement) {
+              selectedTokenElement.classList.remove("token-selected");
+            }
+            selectedTokenElement = chip;
+            chip.classList.add("token-selected");
+          }
+        }
+      });
+
+      return chip;
+    }
+
+    // 將標籤退回標籤庫
+    function returnTokenToBank(chip) {
+      const parentZone = chip.closest(".drop-zone");
+      if (parentZone) {
+        // 重置該格子的評估樣式，方便學生立即進行二次修改
+        parentZone.classList.remove("border-emerald-500", "bg-emerald-50", "border-rose-500", "bg-rose-50", "shake-anim");
+        const placeholder = parentZone.querySelector(".placeholder-text");
+        if (placeholder) placeholder.style.display = "block";
+      }
+      chip.classList.remove("token-selected");
+      tokenBankEl.appendChild(chip);
+      updateProgress();
+    }
+
+    function setupDropZones() {
+      dropZones.forEach(zone => {
+        // 拖曳經過
+        zone.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          zone.classList.add("drop-hover");
+        });
+
+        zone.addEventListener("dragleave", () => {
+          zone.classList.remove("drop-hover");
+        });
+
+        // 放置 Drop 事件
+        zone.addEventListener("drop", (e) => {
+          e.preventDefault();
+          zone.classList.remove("drop-hover");
+          const tokenId = e.dataTransfer.getData("text/plain") || draggedTokenId;
+          if (!tokenId) return;
+
+          const chip = document.getElementById(`chip-${tokenId}`);
+          if (chip) {
+            placeChipIntoZone(chip, zone);
+          }
+        });
+
+        // 點擊放置區（支援手機觸控選取後放入）
+        zone.addEventListener("click", () => {
+          if (selectedTokenElement) {
+            placeChipIntoZone(selectedTokenElement, zone);
+            selectedTokenElement.classList.remove("token-selected");
+            selectedTokenElement = null;
+          }
+        });
+      });
+    }
+
+    // 將標籤放入格子的核心防呆與替換邏輯
+    function placeChipIntoZone(chip, zone) {
+      // 防呆設計：如果格子裡已有舊標籤，先將舊標籤退回標籤庫
+      const existingChip = zone.querySelector(".token-chip");
+      if (existingChip && existingChip !== chip) {
+        returnTokenToBank(existingChip);
+      }
+
+      // 隱藏格子占位文字
+      const placeholder = zone.querySelector(".placeholder-text");
+      if (placeholder) placeholder.style.display = "none";
+
+      // 放入新標籤時清除先前的紅綠判斷框，代表進入待修改/已更新狀態
+      zone.classList.remove("border-emerald-500", "bg-emerald-50", "border-rose-500", "bg-rose-50", "shake-anim");
+
+      // 放入標籤
+      zone.appendChild(chip);
+      chip.classList.remove("token-selected");
+      updateProgress();
+    }
+
+    checkAnswersBtn.addEventListener("click", () => {
+      let correctCount = 0;
+      let unfilledCount = 0;
+      let wrongCount = 0;
+
+      dropZones.forEach(zone => {
+        const accepted = zone.dataset.accepted;
+        const currentChip = zone.querySelector(".token-chip");
+
+        // 清除舊動畫 class
+        zone.classList.remove("shake-anim", "correct-anim", "border-emerald-500", "bg-emerald-50", "border-rose-500", "bg-rose-50");
+
+        if (!currentChip) {
+          unfilledCount++;
+          // 提示未填寫
+          zone.classList.add("border-amber-400", "bg-amber-50/70");
+        } else {
+          const userTerm = currentChip.dataset.term;
+          if (userTerm === accepted) {
+            // 正確：綠色外框與光暈
+            correctCount++;
+            zone.classList.add("border-emerald-500", "bg-emerald-50/90", "correct-anim");
+          } else {
+            // 錯誤：紅色外框 + 震動動畫（讓學生一目了然需要修改哪些框）
+            wrongCount++;
+            zone.classList.add("border-rose-500", "bg-rose-50/90", "shake-anim");
+          }
+        }
+      });
+
+      // 計算百分比
+      const total = dropZones.length;
+      const percentage = Math.round((correctCount / total) * 100);
+
+      // 顯示評分結果面板
+      showResultModal(percentage, correctCount, total, unfilledCount);
+    });
+
+    function showResultModal(percentage, correct, total, unfilled) {
+      resultPanel.classList.remove("hidden");
+      resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+      // 圓環動畫計算 (周長 264)
+      const circumference = 264;
+      const offset = circumference - (circumference * percentage) / 100;
+      
+      // 動畫更新分數
+      scorePercentageEl.textContent = `${percentage}%`;
+      scoreFractionEl.textContent = `答對 ${correct} / ${total} 題`;
+
+      setTimeout(() => {
+        scoreCircle.style.strokeDashoffset = offset;
+        if (percentage >= 80) {
+          scoreCircle.style.stroke = "#10b981"; // 綠色
+        } else if (percentage >= 50) {
+          scoreCircle.style.stroke = "#f59e0b"; // 琥珀橙
+        } else {
+          scoreCircle.style.stroke = "#ef4444"; // 紅色
+        }
+      }, 50);
+
+      // 正向鼓勵與回饋文案（引導自行訂正）
+      if (percentage === 100) {
+        feedbackBadge.className = "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold mb-2 bg-emerald-100 text-emerald-800";
+        feedbackBadge.textContent = "🏆 滿分水循環大師！";
+        feedbackTitle.textContent = "太厲害了！全部配對完全正確！";
+        feedbackMessage.textContent = "你已經徹底掌握了水在海洋、大氣、陸地與地底的循環歷程！大自然的運作秘密已經被你解鎖了！";
+        scrollToReviseBtn.classList.add("hidden");
+        // 發射彩帶慶祝
+        if (window.confetti) {
+          confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+        }
+      } else if (percentage >= 70) {
+        feedbackBadge.className = "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold mb-2 bg-sky-100 text-sky-800";
+        feedbackBadge.textContent = "🌟 表現優異，接近完美！";
+        feedbackTitle.textContent = "做得很好！只差幾個環節就滿分囉！";
+        feedbackMessage.textContent = `你已經答對了 ${correct} 個環節！上方顯示為【紅色】的格子代表需要調整，點擊紅色框內的標籤即可更換，再檢查一次看看！`;
+        scrollToReviseBtn.classList.remove("hidden");
+      } else {
+        feedbackBadge.className = "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold mb-2 bg-amber-100 text-amber-800";
+        feedbackBadge.textContent = "💪 繼續加油，找出盲點！";
+        feedbackTitle.textContent = "動手修改是最好的學習！";
+        feedbackMessage.textContent = unfilled > 0 
+          ? `還有 ${unfilled} 個格子尚未放置標籤。綠色代表正確保留，紅色代表需要調整，沿著黃色循環箭頭試著修正吧！`
+          : "紅色震動的格子代表答案不正確。別灰心，點擊紅框內的標籤收回重放，直到全部變綠色！";
+        scrollToReviseBtn.classList.remove("hidden");
+      }
+
+      // 每次答完更新小知識
+      pickRandomFunFact();
+    }
+
+    // 點擊「直接修改紅框」滑回地圖區
+    scrollToReviseBtn.addEventListener("click", () => {
+      document.getElementById("mapStage").scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    // 重新開始整個測驗
+    function initGame() {
+      tokenBankEl.innerHTML = "";
+      tokens = shuffle(initialVocabulary);
+
+      // 清除所有格子
+      dropZones.forEach(zone => {
+        zone.classList.remove("border-emerald-500", "bg-emerald-50", "border-rose-500", "bg-rose-50", "border-amber-400", "bg-amber-50/70", "shake-anim", "correct-anim");
+        const existingChip = zone.querySelector(".token-chip");
+        if (existingChip) existingChip.remove();
+        const placeholder = zone.querySelector(".placeholder-text");
+        if (placeholder) placeholder.style.display = "block";
+      });
+
+      // 渲染洗牌後的名詞標籤
+      tokens.forEach(tok => {
+        const chip = createTokenChip(tok);
+        tokenBankEl.appendChild(chip);
+      });
+
+      selectedTokenElement = null;
+      updateProgress();
+      resultPanel.classList.add("hidden");
+      scoreCircle.style.strokeDashoffset = 264;
+      pickRandomFunFact();
+    }
+
+    // 全部收回標籤
+    returnAllBtn.addEventListener("click", () => {
+      dropZones.forEach(zone => {
+        const chip = zone.querySelector(".token-chip");
+        if (chip) returnTokenToBank(chip);
+      });
+    });
+
+    // 重新開始按鈕
+    resetBtn.addEventListener("click", initGame);
+    tryAgainBtn.addEventListener("click", initGame);
+
+    // 支援上傳自己的圖片替換水循環背景
+    bgUploader.addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          customBgImage.src = event.target.result;
+          customBgImage.classList.remove("hidden");
+          document.getElementById("defaultSvgBg").classList.add("opacity-20");
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      setupDropZones();
+      initGame();
+    });
+  </script>
+</body>
+</html>
